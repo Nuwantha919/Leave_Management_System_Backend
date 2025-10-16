@@ -5,34 +5,39 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.util.HashSet; // <-- IMPORT THIS
+import java.util.Set;      // <-- AND THIS
+
 /**
  * Represents a User entity, mapped to a table in the MySQL database.
  */
 @Entity
 @Table(name = "users")
-@Data // Lombok: Generates getters, setters, equals, hashCode, and toString
-@NoArgsConstructor // Lombok: Generates a constructor with no arguments (required by JPA)
-@AllArgsConstructor // Lombok: Generates a constructor with all arguments
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class User {
 
-    // Primary Key (ID) for the database table
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto-increments in MySQL
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Field mapping to the 'username' column
     @Column(nullable = false, unique = true)
     private String username;
 
-    // Field mapping to the 'password' column
     @Column(nullable = false)
     private String password;
 
-    // Field mapping to the 'role' column (e.g., ADMIN, EMPLOYEE)
     @Column(nullable = false)
     private String role;
 
-    // We keep a custom constructor for initial creation (without the auto-generated ID)
+    // --- THIS IS THE REQUIRED FIX ---
+    // This tells Hibernate that one User can have many Leaves.
+    // Initializing it with new HashSet<>() prevents the startup crash.
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Leave> leaves = new HashSet<>();
+
+    // Custom constructor
     public User(String username, String password, String role) {
         this.username = username;
         this.password = password;
