@@ -45,6 +45,7 @@ public class AuthController {
                     .username(user.getUsername()) // Using getUsername()
                     .role(user.getRole()) // Using getRole()
                     .message("Login successful!")
+                    .userId(user.getId())
                     .build();
 
             return ResponseEntity.ok(response);
