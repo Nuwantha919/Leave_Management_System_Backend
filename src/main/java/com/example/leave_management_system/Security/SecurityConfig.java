@@ -39,6 +39,4 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // NOTE: We don't need to define an AuthenticationManager or UserDetailsService yet,
-    // as we are manually handling the authentication in AuthController/AuthService for the first step.
 }

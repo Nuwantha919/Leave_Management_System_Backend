@@ -7,16 +7,14 @@ import com.example.leave_management_system.Services.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
 // Controller for all authentication-related endpoints
 @RestController
 @RequestMapping("/login")
+@CrossOrigin("*")
 public class AuthController {
 
     private final AuthService authService;
@@ -40,12 +38,12 @@ public class AuthController {
         if (authenticatedUser.isPresent()) {
             User user = authenticatedUser.get();
 
-            // In this initial phase, we return a simple flag/message as the "token"
-            // This will be replaced by actual JWT generation later.
+            // The changes are here: We now use standard getters (getUsername(), getRole())
+            // instead of record accessors (username(), role())
             LoginResponse response = LoginResponse.builder()
-                    .token("SESSION_FLAG_" + user.username().toUpperCase()) // Placeholder flag
-                    .username(user.username())
-                    .role(user.role())
+                    .token("SESSION_FLAG_" + user.getRole().toUpperCase()) // Using getRole()
+                    .username(user.getUsername()) // Using getUsername()
+                    .role(user.getRole()) // Using getRole()
                     .message("Login successful!")
                     .build();
 
