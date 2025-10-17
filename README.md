@@ -30,6 +30,7 @@ A production-ready REST API for managing employee leave requests with **role-bas
 - 🧯 **Global exception handling** with consistent JSON error envelopes.
 - 🧪 **Unit tests** for core services and auth flows.
 - ⚙️ **Seed users** on startup: `admin/admin123`, `employee/emp123`.
+- 🧪 **Unit Tests** — Core business logic and authentication flows covered via JUnit + Mockito. 
 
 ---
 
@@ -83,12 +84,8 @@ EMPLOYEE	employee	emp123
 
 Passwords are stored encoded (BCrypt). You can create more users via the Admin API.
 
-## Getting Started
+## 🚀 How to Run the Application
 
-### Create a database
-```http
-CREATE DATABASE leave_mgmt CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
 ### Configure application.properties
 
 spring.datasource.url=jdbc:mysql://localhost:3306/leave_mgmt?useSSL=false&serverTimezone=UTC
@@ -102,4 +99,8 @@ server.port=8080
 ### Run the app
 ```http
 mvn spring-boot:run
+```
+### Run Unit Testing
+```http
+mvn test
 ```
