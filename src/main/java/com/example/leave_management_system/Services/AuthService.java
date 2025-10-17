@@ -3,37 +3,36 @@ package com.example.leave_management_system.Services;
 import com.example.leave_management_system.DTO.LoginRequest;
 import com.example.leave_management_system.Entities.User;
 import com.example.leave_management_system.Repositories.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder; // <-- IMPORT THIS
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
-// This service handles the business logic for user authentication
 @Service
 public class AuthService {
 
-    // Inject the new UserRepository to interact with the MySQL database
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder; // <-- ADD THIS
 
-    // Dependency Injection via constructor
-    public AuthService(UserRepository userRepository) {
+    // Update the constructor to inject the PasswordEncoder
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder; // <-- ADD THIS
     }
 
     /**
-     * Authenticates a user based on provided credentials by checking the database.
+     * Authenticates a user by securely comparing hashed passwords.
      *
-     * @param request The login request containing username and password.
-     * @return An Optional containing the authenticated User, or empty if validation fails.
+     * @param request The login request containing username and plaintext password.
+     * @return An Optional containing the User if authentication is successful.
      */
     public Optional<User> authenticate(LoginRequest request) {
-
-        // 1. Find the user in the database by username
-        // We use the custom method we defined in the UserRepository
         Optional<User> userOptional = userRepository.findByUsername(request.getUsername());
 
-        // 2. Check if user exists and if the password matches
-        // IMPORTANT: In a real app, password comparison MUST use a strong encoder (e.g., BCryptPasswordEncoder)
+        // --- THIS IS THE REQUIRED CHANGE ---
+        // Instead of user.getPassword().equals(request.getPassword()),
+        // we use the encoder's "matches" method. This is the secure way.
         return userOptional
-                .filter(user -> user.getPassword().equals(request.getPassword()));
+                .filter(user -> passwordEncoder.matches(request.getPassword(), user.getPassword()));
     }
 }
