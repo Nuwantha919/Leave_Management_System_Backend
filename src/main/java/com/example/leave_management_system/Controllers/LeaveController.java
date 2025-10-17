@@ -2,6 +2,7 @@ package com.example.leave_management_system.Controllers;
 
 import com.example.leave_management_system.DTO.LeaveRequestDto;
 import com.example.leave_management_system.DTO.LeaveResponseDto;
+import com.example.leave_management_system.DTO.LeaveStatusUpdateDto;
 import com.example.leave_management_system.Services.LeaveService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -79,5 +80,18 @@ public class LeaveController {
     public ResponseEntity<Void> deleteLeave(@PathVariable Long id, Authentication authentication) {
         leaveService.deleteLeave(id, authentication);
         return ResponseEntity.noContent().build();
+    }
+    /**
+     * SPECIFIC endpoint for an Admin to update a leave's status.
+     * @param id The ID of the leave.
+     * @param statusUpdateDto The DTO containing the new status.
+     * @return The updated leave.
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<LeaveResponseDto> updateLeaveStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody LeaveStatusUpdateDto statusUpdateDto) {
+        LeaveResponseDto updatedLeave = leaveService.updateLeaveStatus(id, statusUpdateDto.getStatus());
+        return ResponseEntity.ok(updatedLeave);
     }
 }

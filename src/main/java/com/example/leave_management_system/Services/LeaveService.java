@@ -104,6 +104,26 @@ public class LeaveService {
 
         leaveRepository.delete(leave);
     }
+    /**
+     * Updates only the status of a leave request.
+     * @param id The ID of the leave.
+     * @param newStatusString The new status as a string ("APPROVED" or "REJECTED").
+     * @return The updated leave DTO.
+     */
+    public LeaveResponseDto updateLeaveStatus(Long id, String newStatusString) {
+        Leave existingLeave = leaveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Leave not found with ID: " + id));
+
+        try {
+            LeaveStatus newStatus = LeaveStatus.valueOf(newStatusString.toUpperCase());
+            existingLeave.setStatus(newStatus);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid leave status: " + newStatusString);
+        }
+
+        Leave updatedLeave = leaveRepository.save(existingLeave);
+        return mapToDto(updatedLeave);
+    }
 
     // --- Helper Methods ---
     private void authorizeAccess(Authentication authentication, Leave leave) {
