@@ -1,36 +1,60 @@
+// src/main/java/com/example/leave_management_system/Services/AuthService.java
+
 package com.example.leave_management_system.Services;
 
 import com.example.leave_management_system.DTO.LoginRequest;
+import com.example.leave_management_system.DTO.UserRegistrationDto;
+import com.example.leave_management_system.Entities.Leave;
 import com.example.leave_management_system.Entities.User;
+import com.example.leave_management_system.Enums.LeaveStatus;
+import com.example.leave_management_system.Repositories.LeaveRepository;
+import com.example.leave_management_system.Repositories.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
-// This service handles the business logic for user authentication
 @Service
 public class AuthService {
 
-    // --- In-Memory User Storage (for this stage) ---
-    // In a real application, this logic would interact with a database (e.g., UserRepository)
-    private final Map<String, User> inMemoryUsers = Map.of(
-            "admin", new User("admin", "admin123", "ADMIN"),
-            "employee", new User("employee", "emp123", "EMPLOYEE")
-    );
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final LeaveRepository leaveRepository; // Add this
 
-    /**
-     * Authenticates a user based on provided credentials.
-     *
-     * @param request The login request containing username and password.
-     * @return An Optional containing the authenticated User, or empty if validation fails.
-     */
+    // Update constructor
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, LeaveRepository leaveRepository) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.leaveRepository = leaveRepository;
+    }
+
+    // Your original authenticate method (no changes)
     public Optional<User> authenticate(LoginRequest request) {
-        // 1. Find the user by username
-        Optional<User> userOptional = Optional.ofNullable(inMemoryUsers.get(request.getUsername()));
+        return userRepository.findByUsername(request.getUsername())
+                .filter(user -> passwordEncoder.matches(request.getPassword(), user.getPassword()));
+    }
 
-        // 2. Check if user exists and if the password matches
-        // NOTE: In a real app, password comparison MUST use a strong encoder (e.g., BCryptPasswordEncoder)
-        return userOptional
-                .filter(user -> user.password().equals(request.getPassword()));
+    // Update createUser method
+    public User createUser(UserRegistrationDto registrationDto) {
+        if (userRepository.findByUsername(registrationDto.getUsername()).isPresent()) {
+            throw new IllegalStateException("Username '" + registrationDto.getUsername() + "' already exists.");
+        }
+        User newUser = new User();
+        newUser.setUsername(registrationDto.getUsername());
+        newUser.setPassword(passwordEncoder.encode(registrationDto.getPassword()));
+        newUser.setRole(registrationDto.getRole().toUpperCase());
+        newUser.setMaximumLeaveCount(registrationDto.getMaximumLeaveCount()); // Set new field
+        return userRepository.save(newUser);
+    }
+
+    // New method to calculate leaves
+    public long calculateLeavesTaken(User user) {
+        List<Leave> approvedLeaves = leaveRepository.findByEmployeeAndStatus(user, LeaveStatus.APPROVED);
+        long totalDaysTaken = 0;
+        for (Leave leave : approvedLeaves) {
+            totalDaysTaken += ChronoUnit.DAYS.between(leave.getStartDate(), leave.getEndDate()) + 1;
+        }
+        return totalDaysTaken;
     }
 }
