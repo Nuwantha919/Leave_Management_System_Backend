@@ -26,7 +26,6 @@ public class LeaveService {
 
     // POST /leaves (with security)
     public LeaveResponseDto createLeave(LeaveRequestDto leaveRequestDto, Authentication authentication) {
-        // Get username from the token, not the request body
         String username = authentication.getName();
         User employee = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found in database: " + username));
@@ -35,12 +34,29 @@ public class LeaveService {
             throw new IllegalArgumentException("End date cannot be before start date.");
         }
 
+        // --- CONFLICT DETECTION: Check for overlapping APPROVED leaves ---
+        List<Leave> overlappingLeaves = leaveRepository.findOverlappingApprovedLeaves(
+                employee,
+                leaveRequestDto.getStartDate(),
+                leaveRequestDto.getEndDate()
+        );
+
+        if (!overlappingLeaves.isEmpty()) {
+            // Throw an exception if a conflict is found.
+            // The message provides details on the first found conflict.
+            Leave conflict = overlappingLeaves.get(0);
+            throw new IllegalStateException("Leave request conflicts with an existing APPROVED leave from " +
+                    conflict.getStartDate() +
+                    " to " + conflict.getEndDate());
+        }
+        // --- END CONFLICT DETECTION ---
+
         Leave leave = Leave.builder()
-                .employee(employee) // Associate with the authenticated user
+                .employee(employee)
                 .startDate(leaveRequestDto.getStartDate())
                 .endDate(leaveRequestDto.getEndDate())
                 .reason(leaveRequestDto.getReason())
-                .status(LeaveStatus.PENDING) // New leaves are always pending
+                .status(LeaveStatus.PENDING)
                 .build();
 
         Leave savedLeave = leaveRepository.save(leave);
@@ -104,8 +120,9 @@ public class LeaveService {
 
         leaveRepository.delete(leave);
     }
+
     /**
-     * Updates only the status of a leave request.
+     * Updates only the status of a leave request (Admin/Manager action).
      * @param id The ID of the leave.
      * @param newStatusString The new status as a string ("APPROVED" or "REJECTED").
      * @return The updated leave DTO.
@@ -120,6 +137,9 @@ public class LeaveService {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid leave status: " + newStatusString);
         }
+
+        // NOTE: A more complex system would check for conflicts here if status is set to APPROVED,
+        // but for basic implementation, we skip it.
 
         Leave updatedLeave = leaveRepository.save(existingLeave);
         return mapToDto(updatedLeave);
