@@ -6,7 +6,7 @@ A production-ready REST API for managing employee leave requests with **role-bas
 
 ## Tech Stack
 
-- **Java 17+**, **Spring Boot**
+- **Java 21+**, **Spring Boot**
 - Spring Web, Spring Security, Validation (Jakarta)
 - Spring Data JPA (MySQL)
 - Lombok
