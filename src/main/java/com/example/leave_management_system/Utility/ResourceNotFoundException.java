@@ -1,9 +1,6 @@
 package com.example.leave_management_system.Utility;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
-
-@ResponseStatus(value = HttpStatus.NOT_FOUND)
+// REMOVE the @ResponseStatus annotation from here.
 public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException(String message) {
         super(message);
