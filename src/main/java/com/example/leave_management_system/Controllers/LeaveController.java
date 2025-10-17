@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,42 +22,62 @@ public class LeaveController {
 
     // POST /api/leaves — Create a leave request.
     @PostMapping
-    public ResponseEntity<LeaveResponseDto> createLeave(@Valid @RequestBody LeaveRequestDto leaveRequestDto) {
-        LeaveResponseDto createdLeave = leaveService.createLeave(leaveRequestDto);
+    public ResponseEntity<LeaveResponseDto> createLeave(
+            @Valid @RequestBody LeaveRequestDto leaveRequestDto,
+            Authentication authentication // Inject authentication object
+    ) {
+        // Pass the DTO and the logged-in user's details to the service
+        LeaveResponseDto createdLeave = leaveService.createLeave(leaveRequestDto, authentication);
         return new ResponseEntity<>(createdLeave, HttpStatus.CREATED);
     }
 
-    // GET /api/leaves — Retrieve all leaves OR leaves for a specific employee.
+    // GET /api/leaves
     @GetMapping
     public ResponseEntity<List<LeaveResponseDto>> getAllLeaves(
-            @RequestParam(required = false) String employeeName) {
+            @RequestParam(required = false) String employeeName,
+            Authentication authentication
+    ) {
+        String loggedInUsername = authentication.getName();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(role -> role.equals("ADMIN"));
+
         List<LeaveResponseDto> leaves;
-        if (employeeName != null && !employeeName.isEmpty()) {
-            leaves = leaveService.getLeavesByEmployeeName(employeeName);
+
+        if (isAdmin) {
+            if (employeeName != null && !employeeName.isEmpty()) {
+                leaves = leaveService.getLeavesByEmployeeName(employeeName);
+            } else {
+                leaves = leaveService.getAllLeaves();
+            }
         } else {
-            leaves = leaveService.getAllLeaves();
+            leaves = leaveService.getLeavesByEmployeeName(loggedInUsername);
         }
         return ResponseEntity.ok(leaves);
     }
 
-    // GET /api/leaves/:id — Retrieve single leave.
+    // GET /api/leaves/:id
     @GetMapping("/{id}")
-    public ResponseEntity<LeaveResponseDto> getLeaveById(@PathVariable Long id) {
-        LeaveResponseDto leave = leaveService.getLeaveById(id);
+    public ResponseEntity<LeaveResponseDto> getLeaveById(@PathVariable Long id, Authentication authentication) {
+        LeaveResponseDto leave = leaveService.getLeaveById(id, authentication);
         return ResponseEntity.ok(leave);
     }
 
-    // PUT /api/leaves/:id — Update leave.
+    // PUT /api/leaves/:id
     @PutMapping("/{id}")
-    public ResponseEntity<LeaveResponseDto> updateLeave(@PathVariable Long id, @Valid @RequestBody LeaveRequestDto leaveRequestDto) {
-        LeaveResponseDto updatedLeave = leaveService.updateLeave(id, leaveRequestDto);
+    public ResponseEntity<LeaveResponseDto> updateLeave(
+            @PathVariable Long id,
+            @Valid @RequestBody LeaveRequestDto leaveRequestDto,
+            Authentication authentication
+    ) {
+        LeaveResponseDto updatedLeave = leaveService.updateLeave(id, leaveRequestDto, authentication);
         return ResponseEntity.ok(updatedLeave);
     }
 
-    // DELETE /api/leaves/:id — Delete/cancel leave.
+    // DELETE /api/leaves/:id
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteLeave(@PathVariable Long id) {
-        leaveService.deleteLeave(id);
+    public ResponseEntity<Void> deleteLeave(@PathVariable Long id, Authentication authentication) {
+        leaveService.deleteLeave(id, authentication);
         return ResponseEntity.noContent().build();
     }
 }

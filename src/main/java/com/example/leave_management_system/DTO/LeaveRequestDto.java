@@ -10,9 +10,8 @@ import java.time.LocalDate;
 @Data
 public class LeaveRequestDto {
 
-    // In a real app, you wouldn't pass this. You'd get it from the logged-in user's token.
-    @NotNull(message = "Employee ID cannot be null")
-    private Long userId;
+    // REMOVED: private Long userId;
+    // We get the user ID from the token on the backend now.
 
     @NotNull(message = "Start date is required")
     @FutureOrPresent(message = "Start date must not be in the past")

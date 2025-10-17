@@ -37,7 +37,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/leaves").hasAuthority("ADMIN")
+//                        .requestMatchers(HttpMethod.GET, "/api/leaves").hasAuthority("ADMIN")
+//                        enforce Admin vs Employee logic inside the controller.
                         .requestMatchers("/api/leaves/**").authenticated()
                         .anyRequest().authenticated()
                 )

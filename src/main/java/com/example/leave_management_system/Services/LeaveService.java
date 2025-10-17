@@ -9,9 +9,11 @@ import com.example.leave_management_system.Repositories.LeaveRepository;
 import com.example.leave_management_system.Repositories.UserRepository;
 import com.example.leave_management_system.Utility.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,17 +24,19 @@ public class LeaveService {
     private final LeaveRepository leaveRepository;
     private final UserRepository userRepository;
 
-    // POST /leaves
-    public LeaveResponseDto createLeave(LeaveRequestDto leaveRequestDto) {
+    // POST /leaves (with security)
+    public LeaveResponseDto createLeave(LeaveRequestDto leaveRequestDto, Authentication authentication) {
+        // Get username from the token, not the request body
+        String username = authentication.getName();
+        User employee = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found in database: " + username));
+
         if (leaveRequestDto.getEndDate().isBefore(leaveRequestDto.getStartDate())) {
             throw new IllegalArgumentException("End date cannot be before start date.");
         }
 
-        User employee = userRepository.findById(leaveRequestDto.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + leaveRequestDto.getUserId()));
-
         Leave leave = Leave.builder()
-                .employee(employee)
+                .employee(employee) // Associate with the authenticated user
                 .startDate(leaveRequestDto.getStartDate())
                 .endDate(leaveRequestDto.getEndDate())
                 .reason(leaveRequestDto.getReason())
@@ -43,39 +47,39 @@ public class LeaveService {
         return mapToDto(savedLeave);
     }
 
-    // GET /leaves/:id
-    public LeaveResponseDto getLeaveById(Long id) {
+    // GET /leaves/:id (with security)
+    public LeaveResponseDto getLeaveById(Long id, Authentication authentication) {
         Leave leave = leaveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave not found with ID: " + id));
+        authorizeAccess(authentication, leave);
         return mapToDto(leave);
     }
 
-    // GET /leaves
+    // GET /leaves (no security needed here, handled in controller)
     public List<LeaveResponseDto> getAllLeaves() {
-        return leaveRepository.findAll().stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+        return leaveRepository.findAll().stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
-    // GET /leaves?employee=employeeName
+    // GET /leaves?employee=... (no security needed here)
     public List<LeaveResponseDto> getLeavesByEmployeeName(String employeeName) {
-        return leaveRepository.findByEmployee_Username(employeeName).stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+        return leaveRepository.findByEmployee_Username(employeeName).stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
-    // PUT /leaves/:id
-    public LeaveResponseDto updateLeave(Long id, LeaveRequestDto leaveRequestDto) {
+    // PUT /leaves/:id (with security)
+    public LeaveResponseDto updateLeave(Long id, LeaveRequestDto leaveRequestDto, Authentication authentication) {
         Leave existingLeave = leaveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave not found with ID: " + id));
+        authorizeAccess(authentication, existingLeave);
 
-        // Update basic details
+        if (!isAdmin(authentication) && existingLeave.getStatus() != LeaveStatus.PENDING) {
+            throw new IllegalStateException("You can only update leaves that are in PENDING status.");
+        }
+
         existingLeave.setStartDate(leaveRequestDto.getStartDate());
         existingLeave.setEndDate(leaveRequestDto.getEndDate());
         existingLeave.setReason(leaveRequestDto.getReason());
 
-        // Update status if provided (typically by an admin)
-        if (leaveRequestDto.getStatus() != null && !leaveRequestDto.getStatus().isEmpty()) {
+        if (isAdmin(authentication) && leaveRequestDto.getStatus() != null && !leaveRequestDto.getStatus().isEmpty()) {
             try {
                 LeaveStatus newStatus = LeaveStatus.valueOf(leaveRequestDto.getStatus().toUpperCase());
                 existingLeave.setStatus(newStatus);
@@ -88,12 +92,12 @@ public class LeaveService {
         return mapToDto(updatedLeave);
     }
 
-    // DELETE /leaves/:id
-    public void deleteLeave(Long id) {
+    // DELETE /leaves/:id (with security)
+    public void deleteLeave(Long id, Authentication authentication) {
         Leave leave = leaveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave not found with ID: " + id));
+        authorizeAccess(authentication, leave);
 
-        // Business rule: only allow deleting if it's pending
         if (leave.getStatus() != LeaveStatus.PENDING) {
             throw new IllegalStateException("Cannot delete a leave that is not in PENDING status.");
         }
@@ -101,7 +105,22 @@ public class LeaveService {
         leaveRepository.delete(leave);
     }
 
-    // Helper method to map Entity to DTO
+    // --- Helper Methods ---
+    private void authorizeAccess(Authentication authentication, Leave leave) {
+        String loggedInUsername = authentication.getName();
+        String leaveOwnerUsername = leave.getEmployee().getUsername();
+
+        if (!isAdmin(authentication) && !loggedInUsername.equals(leaveOwnerUsername)) {
+            throw new AccessDeniedException("You do not have permission to access this resource.");
+        }
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(role -> role.equals("ADMIN"));
+    }
+
     private LeaveResponseDto mapToDto(Leave leave) {
         return LeaveResponseDto.builder()
                 .id(leave.getId())

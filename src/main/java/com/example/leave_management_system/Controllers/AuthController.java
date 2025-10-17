@@ -38,10 +38,12 @@ public class AuthController {
         if (authenticatedUser.isPresent()) {
             User user = authenticatedUser.get();
 
-            // The changes are here: We now use standard getters (getUsername(), getRole())
-            // instead of record accessors (username(), role())
+            String tokenValue = String.format("SESSION_FLAG_%s_%s",
+                    user.getRole().toUpperCase(),
+                    user.getUsername());
+
             LoginResponse response = LoginResponse.builder()
-                    .token("SESSION_FLAG_" + user.getRole().toUpperCase()) // Using getRole()
+                    .token(tokenValue)
                     .username(user.getUsername()) // Using getUsername()
                     .role(user.getRole()) // Using getRole()
                     .message("Login successful!")

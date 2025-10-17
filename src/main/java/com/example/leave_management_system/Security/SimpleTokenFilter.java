@@ -14,7 +14,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -29,29 +28,39 @@ public class SimpleTokenFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        // If there's no header or it's not our simple token, do nothing.
         if (authHeader == null || !authHeader.startsWith("Bearer SESSION_FLAG_")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extract the role from the token (e.g., "EMPLOYEE" or "ADMIN")
-        String token = authHeader.substring(7); // Removes "Bearer "
-        String role = token.replace("SESSION_FLAG_", "");
+        // --- THIS LOGIC IS NEW ---
+        try {
+            String token = authHeader.substring(7); // Removes "Bearer "
+            String[] parts = token.replace("SESSION_FLAG_", "").split("_", 2);
 
-        // Create an authority for this role
-        List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority(role));
+            if (parts.length != 2) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-        // Create an authentication object and set it in Spring's security context
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                null, // Principal is null as we don't know the specific user
-                null, // Credentials are null
-                authorities
-        );
+            String role = parts[0];
+            String username = parts[1];
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+            // Now the Authentication object knows WHO the user is (the principal)
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    username, // Principal is the username
+                    null,
+                    Collections.singletonList(new SimpleGrantedAuthority(role))
+            );
 
-        // Continue to the next filter in the chain
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        } catch (Exception e) {
+            // If token parsing fails, clear the context
+            SecurityContextHolder.clearContext();
+        }
+        // --- END OF NEW LOGIC ---
+
         filterChain.doFilter(request, response);
     }
 }
