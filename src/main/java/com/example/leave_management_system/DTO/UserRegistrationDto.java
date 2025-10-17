@@ -13,4 +13,6 @@ public class UserRegistrationDto {
 
     @NotBlank(message = "Role is required")
     private String role; // e.g., "ADMIN" or "EMPLOYEE"
+
+    private int maximumLeaveCount = 20;
 }

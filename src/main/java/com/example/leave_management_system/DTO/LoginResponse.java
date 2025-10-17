@@ -12,4 +12,8 @@ public class LoginResponse {
     private String role;
     private String message;
     private Long userId;
+
+    private int maximumLeaveCount;
+    private long leavesTaken;
+    private long leaveBalance;
 }

@@ -37,6 +37,9 @@ public class User {
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Leave> leaves = new HashSet<>();
 
+    @Column(nullable = false, columnDefinition = "INT DEFAULT 20")
+    private int maximumLeaveCount = 20;
+
     // Custom constructor
     public User(String username, String password, String role) {
         this.username = username;
